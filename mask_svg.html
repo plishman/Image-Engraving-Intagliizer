@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script type="text/javascript">
+    function sine_path(strokewidth, svg_elementid, pat_rot_angle, img_url, w, h, pat_scalefactor, a, patrot2_angle) {
+        var Phi = 1.618033988749894;
+        
+        var wanted_dpi = 48; //300;
+        var screen_dpi = 96;
+        var dpi_multiplier = wanted_dpi/96;
+
+        var svg_width = w; //2048; // 11312; //1920 * 6;
+        var svg_height = h; //1024; // 15120; //1080 * 6;
+
+        svg_id = svg_elementid + "_svg";
+        canvas_id = svg_elementid + "_canvas";
+        
+        //var svg = document.getElementById('sine_wave').children[0];
+        //svg = document.getElementById(svg_elementid).children[0];
+
+        svg = document.getElementById(svg_elementid);                   // svg_elementid is the id of the containing object, if available
+        
+        if (!svg) {                                                     // otherwise create svg
+            svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute('id', svg_id);
+        }
+        else {
+            svg = svg.children[0];                                      // if containing tag was available, get svg (backward compat for earlier prog)
+        }
+
+        var origin = { //origin of axes
+            x: 0,
+            y: 0
+        };
+
+        svg.setAttribute('width', svg_width);
+        svg.setAttribute('height', svg_height);
+
+        var scalefactor = pat_scalefactor; //(svg_width / 15120); //svg_height * dpi_multiplier; //svg_height / 15120;
+        strokewidth = strokewidth * scalefactor;
+
+
+        var pitch = 1.5 * Math.PI * scalefactor; // * dpi_multiplier; //scalefactor;
+        //var weight = 6;
+        var amplitude = (18 / Phi) * (svg_height / 15120) * a; //dpi_multiplier; //scalefactor; //(5/1080) * svg_height; // wave amplitude
+        var rarity = 1; // point spacing
+        //var freq = 0.04; // angular frequency
+        var freq =((2*Math.PI) / svg_width) * 32;
+        var pat_width = (2 * Math.PI)/freq; 
+        var pat_height = pitch;
+        var phase = 0; // phase angle
+        var pattern_name = svg_elementid + "_pattern";
+        var mask_name = svg_elementid + "_mask";
+        var pattern_url = "url(#" + pattern_name + ")";
+        var mask_url = "url(#" + mask_name + ")";
+
+        var pat = document.createElementNS("http://www.w3.org/2000/svg", "pattern");
+        pat.setAttribute('id', pattern_name);
+        pat.setAttribute('x', 0);
+        pat.setAttribute('y', 0);
+        pat.setAttribute('width', 1920);
+        pat.setAttribute('height', 1920);
+        pat.setAttribute('patternUnits', "userSpaceOnUse");
+        pat.setAttribute('patternTransform', "translate(0," + String(pat_height / 2) + ")");
+
+        var numlines_per_pat = 1 + (2 * Math.round(pat_height/pitch));
+        origin.y = -(numlines_per_pat * pitch);
+        var pth = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        var path_txt = "";
+        
+        for (var j = 0; j < 4 * numlines_per_pat; j++) {
+            path_txt += "M 0 " + (Math.sin(freq * (0 + phase)) * amplitude + origin.y) + " ";
+            var num_iter_whole_wave = 2 * strokewidth + (2*Math.PI)/freq; 
+            var iter_start = -strokewidth;
+            var iter_end = num_iter_whole_wave + strokewidth;
+            for (var i = iter_start; i < iter_end; i++) {
+                path_txt += "L " + (i * rarity + origin.x) + " " + (Math.sin(freq * (i + phase)) * amplitude + origin.y) + " ";
+    
+    
+                //line.setAttribute('x1', (i - 1) * rarity + origin.x);
+                //line.setAttribute('y1', Math.sin(freq * (i - 1 + phase)) * amplitude + origin.y);
+    
+                //line.setAttribute('x2', i * rarity + origin.x);
+                //line.setAttribute('y2', Math.sin(freq * (i + phase)) * amplitude + origin.y);
+    
+                //line.setAttribute('style', "stroke:black;stroke-width:1");
+    
+                //pat.appendChild(line);
+            }
+        origin.y += pitch;
+        }
+        console.log("weight", strokewidth);
+        pth.setAttribute('style', "fill:0;fill-opacity:0;stroke:white;stroke-width:" + String(strokewidth) + ";");
+        //pth.setAttribute('stroke', "stroke:black");
+        //pth.setAttribute('stroke-width', "1");
+        //pth.setAttribute('fill-opacity', "0");
+        //pth.setAttribute('fill', "0");
+        pth.setAttribute('d', path_txt);
+
+        var patBox = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        patBox.setAttribute('x', 0);
+        patBox.setAttribute('y', 0);
+        patBox.setAttribute('width', pat_width);
+        patBox.setAttribute('height', pat_height);
+        patBox.setAttribute('style', "stroke:black;stroke-width:0" /*+ pat_height*/);
+        patBox.setAttribute('fill', "black");
+
+        pat.setAttribute('patternTransform', "rotate(" + pat_rot_angle + ") rotate(" + patrot2_angle + ")");
+        pat.setAttribute('patternUnits', "userSpaceOnUse");
+        //pat.setAttribute('patternUnits', "objectBoundingBox");
+        pat.setAttribute('width', pat_width);
+        pat.setAttribute('height', pat_height);
+        pat.setAttribute('style', "fill:0;fill-opacity:0;");
+        
+        pat.appendChild(patBox);
+        pat.appendChild(pth);
+        
+        svg.appendChild(pat);
+
+        var mask = document.createElementNS("http://www.w3.org/2000/svg", "mask");
+        mask.setAttribute("id", mask_name);
+        mask.setAttribute("maskUnits", "objectBoundingBox");
+        mask.setAttribute("maskContentUnits", "userSpaceOnUse");
+
+        var maskBox = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        maskBox.setAttribute('x', 0);
+        maskBox.setAttribute('y', 0);
+        maskBox.setAttribute('width', "100%");
+        maskBox.setAttribute('height', "100%");
+        maskBox.setAttribute('style', "stroke:black;stroke-width:0");
+        maskBox.setAttribute('fill', pattern_url);
+        mask.appendChild(maskBox);
+        svg.appendChild(mask);
+        //svg.appendChild(maskBox);
+
+        var svgimg = document.createElementNS('http://www.w3.org/2000/svg','image');
+        //svgimg.setAttributeNS(null,'height','256');
+        //svgimg.setAttributeNS(null,'width','256');
+        svgimg.setAttributeNS('http://www.w3.org/1999/xlink','href', img_url);
+        //svgimg.setAttributeNS(null,'x','0');
+        //svgimg.setAttributeNS(null,'y','0');
+        //svgimg.setAttributeNS(null, 'visibility', 'visible');
+        svgimg.setAttributeNS(null, 'mask', mask_url);
+
+        svgimg.setAttribute('height', svg_height);
+        svgimg.setAttribute('width', svg_width);
+        svgimg.setAttribute('x', 0);
+        svgimg.setAttribute('y', 0);
+
+        svg.appendChild(svgimg);
+/*
+        var box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        box.setAttribute('x', 0);
+        box.setAttribute('y', 0);
+        box.setAttribute('width', svg_width);
+        box.setAttribute('height', svg_height);
+        box.setAttribute('style', "stroke:black;stroke-width:0");
+        box.setAttribute('fill', pattern_url);
+*/
+        
+        svg.setAttribute('id', svg_id);
+//        svg.appendChild(box);
+        
+        //renderSvgToCanvas("#" + svg_id, canvas_id, svg_elementid, false); // svg_elementid is the id of the containing div of the svg
+        return svg;
+    } 
+
+    function renderSvgToCanvas(svgSelector, canvasId, destElementId, b_hideSVG) {
+        //debugger;
+        // Get the SVG element from the page using its selector
+        const svgElement = document.querySelector(svgSelector);
+
+        // Get the canvas element by its ID or create a new one if it doesn't exist
+        let canvasElement = document.getElementById(canvasId);
+
+        if (!canvasElement) {
+            canvasElement = document.createElement("canvas");
+            canvasElement.setAttribute('id', canvasId);
+            var canvases = document.getElementById("canvases");
+            var cdivElement = document.getElementById(destElementId);
+            cdivElement.setAttribute('style', "border:1px solid blue;");
+            cdivElement.appendChild(canvasElement);
+            var h2 = document.createElement("h2");
+            h2.innerText = destElementId;
+            cdivElement.prepend(h2);
+        }
+
+        // Get the canvas 2d rendering context
+        const ctx = canvasElement.getContext("2d");
+
+        // Set the canvas size to match the SVG element
+        canvasElement.width = svgElement.clientWidth;
+        canvasElement.height = svgElement.clientHeight;
+
+        // Create a new Image object to render the SVG as an image
+        const img = new Image();
+
+        // Serialize the SVG to a data URL
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        // Set the Image source to the SVG data URL
+        img.src = svgUrl;
+
+        // Once the image is loaded, draw it onto the canvas
+        img.onload = function () {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(svgUrl); // Clean up the URL
+            if (b_hideSVG) {
+                svgElement.setAttribute('style', "display:none");
+            }
+            else {
+                renderSvgToCanvas(svgSelector, "composite_canvas", destElementId, true);
+            }
+        };
+    }
+
+// Usage example:
+// Assuming you have an SVG element with the ID "mySvg" and want to render it to a canvas with the ID "myCanvas"
+//renderSvgToCanvas("#mySvg", "myCanvas");
+</script>
+<script type="text/javascript">
+    function doThreshold(img_url, threshold_slider_id) {
+        const img = new Image();
+        img.src = img_url;
+        
+        img.onload = function() {
+            var w = img.width;
+            var h = img.height;
+
+            if (typeof threshold_slider_id === 'undefined') {
+                var img_original = document.getElementById("img-original");
+                var img_highlights = document.getElementById("img-highlights");
+                var img_light = document.getElementById("img-light");
+                var img_lighter = document.getElementById("img-lighter");
+                var img_darker = document.getElementById("img-darker");
+                var img_dark = document.getElementById("img-dark");
+                var img_shadows = document.getElementById("img-shadows");
+
+                img_original.src = img_url;
+                img_highlights.src = applyThreshold(img, 64, w, h);
+                img_light.src = applyThreshold(img, 96, w, h);
+                img_lighter.src = applyThreshold(img, 128, w, h);
+                img_darker.src = applyThreshold(img, 140, w, h);
+                img_dark.src = applyThreshold(img, 172, w, h);
+                img_shadows.src = applyThreshold(img, 204, w, h);
+            }
+            else {
+                var threshold_slider = document.getElementById(threshold_slider_id);
+                var threshold_image_id = threshold_slider_id.replace("slider", "img");
+                var threshold_image = document.getElementById(threshold_image_id);
+        
+                if (threshold_image) {
+                    if (threshold_slider_id != "slider-original") {
+                        threshold_image.src = applyThreshold(img, threshold_slider.value, w, h);
+                    }
+                }
+            }
+            doSvg("svgDivId");
+        };
+
+    }
+
+
+    // Function to apply the threshold
+    function applyThreshold(imageElement, threshold, w, h) {      
+        // Create a dynamic canvas element
+        const canvas = document.createElement('canvas');
+        canvas.width = w; // Set the canvas width (adjust as needed)
+        canvas.height = h; // Set the canvas height (adjust as needed)
+
+        // Get the 2D drawing context
+        const ctx = canvas.getContext('2d');
+
+        // Draw the image on the dynamic canvas
+        ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+    
+        // Get the image data
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Apply the threshold to the image data
+        for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i];
+        const g = imageData.data[i + 1];
+        const b = imageData.data[i + 2];
+        const gray = (r + g + b) / 3;
+
+        if (gray < threshold) {
+        // Set pixel to black
+        imageData.data[i] = 0;
+        imageData.data[i + 1] = 0;
+        imageData.data[i + 2] = 0;
+        } else {
+        // Set pixel to white
+        imageData.data[i] = 255;
+        imageData.data[i + 1] = 255;
+        imageData.data[i + 2] = 255;
+        imageData.data[i + 3] = 0;
+        }
+        }
+
+        // Put the modified image data back on the canvas
+        ctx.putImageData(imageData, 0, 0);
+
+        // Create a data URL for the thresholded image
+        const dataURL = canvas.toDataURL('image/png');
+        return dataURL;
+
+        // Create an image element within the SVG and set the data URL as the source
+        /*
+        const imageInSVG = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        imageInSVG.setAttribute("x", "0");
+        imageInSVG.setAttribute("y", "0");
+        imageInSVG.setAttribute("width", canvas.width);
+        imageInSVG.setAttribute("height", canvas.height);
+        imageInSVG.setAttribute("xlink:href", dataURL);
+
+        // Append the image to the SVG
+        svgElement.appendChild(imageInSVG);
+        */
+    }
+     
+    function doSlider() {
+        // threshold sliders
+        // Get all range elements with the class 'my-range'
+        const thresholdRangeSliders = document.querySelectorAll('.threshold-range-sliders');
+
+        // Add a change event listener to each range element
+        thresholdRangeSliders.forEach(function(rangeElement) {
+            rangeElement.addEventListener('input', function(event) {
+                // Identify the range element that triggered the event
+                const thresholdRangeSlider = event.target;
+                var img_url = document.getElementById("img-url").value;
+                var imgSliderId = thresholdRangeSlider.id;
+                var imgSliderValueId = imgSliderId.replace("slider-", "") + "-sliderValue";
+                document.getElementById(imgSliderValueId).innerText = "Value: " + event.target.value;
+
+                doThreshold(img_url, thresholdRangeSlider.id);
+            });
+        });
+    
+    
+        // pattern sliders
+        var slider = document.getElementById("slider-patscale");
+        var sliderValueDisplay = document.getElementById("patscale-sliderValue");
+        addSliderEventHandlers(slider, sliderValueDisplay);
+
+        slider = document.getElementById("slider-imgscale");
+        sliderValueDisplay = document.getElementById("imgscale-sliderValue");
+        addSliderEventHandlers(slider, sliderValueDisplay);
+
+        slider = document.getElementById("slider-amplitude");
+        sliderValueDisplay = document.getElementById("amplitude-sliderValue");
+        addSliderEventHandlers(slider, sliderValueDisplay);
+
+        slider = document.getElementById("slider-patrot");
+        sliderValueDisplay = document.getElementById("patrot-sliderValue");
+        addSliderEventHandlers(slider, sliderValueDisplay);
+
+        
+        var imgurl_input = document.getElementById("img-url");
+        imgurl_input.addEventListener("change", function() {
+            const thresholdRangeSliders = document.querySelectorAll('.threshold-range-sliders');
+            var inputEvent = new Event('input', {
+                bubbles: true, // Allow the event to bubble up the DOM
+                cancelable: true, // Allow the event to be cancelable
+            });
+
+            thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
+                thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
+            });
+            
+            document.getElementById("img-have-w-h").value = 0;
+            var img = new Image();
+            img.src = document.getElementById("img-url").value; // Replace with the actual image URL
+            img.onload = function() {
+                document.getElementById("img-width").value = img.width;
+                document.getElementById("img-height").value = img.height;
+                document.getElementById("img-have-w-h").value = 1;
+                doThreshold(img.src);
+                window.setTimeout(function() {updateScroll()}, 1); // hacky, need to wait for image to load, generate svg and add to dom. Seems to be a problem when loading a new image - image is positioned incorrectly in the viewport otherwise
+                //doSvg("svgDivId");
+            };
+        });
+        // Create a new change event
+        var changeEvent = new Event('change', {
+            bubbles: true, // Allow the event to bubble up the DOM
+            cancelable: true, // Allow the event to be cancelable
+        });
+
+        // Dispatch the change event on the input element
+        imgurl_input.dispatchEvent(changeEvent);
+
+        var inputEvent = new Event('input', {
+            bubbles: true, // Allow the event to bubble up the DOM
+            cancelable: true, // Allow the event to be cancelable
+        });
+
+        // Dispatch the change event on the input element
+        document.getElementById("slider-patscale").dispatchEvent(inputEvent);
+        document.getElementById("slider-imgscale").dispatchEvent(inputEvent);
+        document.getElementById("slider-amplitude").dispatchEvent(inputEvent);
+        document.getElementById("slider-patrot").dispatchEvent(inputEvent);
+    }
+
+    function addSliderEventHandlers(slider, sliderValueDisplay) {
+        slider.addEventListener("input", function() {
+        sliderValueDisplay.textContent = "Value: " + slider.value;
+        doSvg("svgDivId");
+        //updateScroll();
+        });
+
+        slider.addEventListener("change", function() {
+        // Call a function with the value of the slider when it's released
+        //doSvg("svgDivId", slider.value);
+        });
+    }
+
+    function getSliderValue(sliderId) {
+        var slider = document.getElementById(sliderId);
+        if (slider && slider.nodeName == "INPUT" && slider.type == "range") {
+            return slider.value;
+        }
+        return 0;
+    }
+
+    function doSvg(destElementId) {    
+        var w = 1024;
+        var h = 768;
+        var img_url = "";
+
+        if (document.getElementById("img-have-w-h").value == 1) { // if the image has been loaded and the width and height saved
+            w = document.getElementById("img-width").value;
+            h = document.getElementById("img-height").value;
+            img_url = document.getElementById("img-url").value;
+        }
+
+        if (img_url == "") return;
+
+        var p = getSliderValue("slider-patscale");
+        var s = getSliderValue("slider-imgscale");
+        var a = getSliderValue("slider-amplitude");
+        var pr2 = getSliderValue("slider-patrot");
+
+        var svgId = "svgSvgId";
+
+        var pat_scalefactor = p * (w / 15120);
+
+        var img_highlights_src = document.getElementById("img-highlights").src;
+        var img_light_src = document.getElementById("img-light").src;
+        var img_lighter_src = document.getElementById("img-lighter").src;
+        var img_darker_src = document.getElementById("img-darker").src;
+        var img_dark_src = document.getElementById("img-dark").src;
+        var img_shadows_src = document.getElementById("img-shadows").src;
+
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute('id', svgId);
+        svg.setAttribute('width', w);
+        svg.setAttribute('height', h);
+        svg.setAttribute("transform", "scale(" + s + ") translate(0,0)");
+
+        var img_colour = document.createElementNS('http://www.w3.org/2000/svg','image');
+        var imgOpacity = document.getElementById("slider-original").value;
+        img_colour.setAttributeNS('http://www.w3.org/1999/xlink','href', img_url);
+        //img_colour.setAttributeNS(null, 'mask', mask_url);
+
+        img_colour.setAttribute('height', h);
+        img_colour.setAttribute('width', w);
+        img_colour.setAttribute('x', 0);
+        img_colour.setAttribute('y', 0);
+        img_colour.setAttribute('opacity', imgOpacity);
+        svg.appendChild(img_colour);
+
+        svg.appendChild(sine_path(3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(sine_path(2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(sine_path(1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(sine_path(0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(sine_path(0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(sine_path(0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2));
+
+/*        
+        var svgs = document.getElementById("svgs");
+        while (svgs.firstChild) { svgs.removeChild(svgs.firstChild); }
+    
+        svgs.appendChild(sine_path(3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2));
+        svgs.appendChild(sine_path(2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2));
+        svgs.appendChild(sine_path(1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2));
+        svgs.appendChild(sine_path(0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2));
+        svgs.appendChild(sine_path(0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2));
+        svgs.appendChild(sine_path(0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2));
+*/      
+
+        oldsvg = document.getElementById(svgId);
+        if (oldsvg) {
+            oldsvg.setAttribute("id", "oldSvgId");
+        }
+
+        document.getElementById(destElementId).appendChild(svg);
+
+        if (oldsvg) {
+            oldsvg.remove();
+        }
+        updateScroll();
+    }
+</script>
+
+<script type="text/javascript">
+    function makeContentDraggable() {
+        // JavaScript for making the content draggable
+        const scrollableContent = document.querySelector('.scrollable-content');
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        scrollableContent.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            scrollLeft = scrollableContent.scrollLeft;
+            scrollTop = scrollableContent.scrollTop;
+            scrollableContent.style.cursor = 'grabbing'; // Change cursor style
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            scrollableContent.scrollLeft = scrollLeft - deltaX;
+            scrollableContent.scrollTop = scrollTop - deltaY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            scrollableContent.style.cursor = 'grab'; // Change cursor style back to "hand"
+        });
+    }
+
+    // Function to update scroll position and container size
+    function updateScroll() {
+        //const scrollableContent = document.querySelector('.scrollable-content');
+        var scrollableContent = document.getElementById("scrollable-contentId");
+        scrollableContent.style.width = "100%";
+        scrollableContent.style.height ="100%";
+
+        var svgDiv = document.getElementById("svgDivId");
+        //svgDiv.style.width = "100%";
+        //svgDiv.style.height = "100%";
+
+        var svg = document.getElementById("svgSvgId");
+        var svgScale = document.getElementById("slider-imgscale").value;
+
+        var contentWidth = svgScale * document.getElementById("img-width").value; 
+        var contentHeight = svgScale * document.getElementById("img-height").value; 
+
+        var vpWidth = scrollableContent.offsetWidth; //svgDiv.offsetWidth;
+        var vpHeight = scrollableContent.offsetHeight; //svgDiv.offsetHeight;
+
+        svgDiv.style.width = vpWidth; // contentWidth + "px";
+        svgDiv.style.height = vpHeight; // contentHeight + "px";
+
+        var translateXpx = (contentWidth - vpWidth) / 2;
+        var translateYpx = (contentHeight - vpHeight) / 2;
+        
+        svgDiv.style.transform = "translate(" + translateXpx + "px," + translateYpx + "px)";
+    }
+</script>
+
+<style>
+body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .top-bar {
+      background: #3498db;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+      flex: 0 0 15%; /* Top bar is exactly 20% high */
+    }
+
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar-left {
+      flex: 1;
+      background: #e74c3c;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .main-content {
+      flex: 3;
+      background: white;
+      color: black;
+      padding: 10px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .scrollable-content {
+        /*max-height: 100%;*/ /* Adjust to your preferred height */
+        /*max-width: 100%;*/
+        /*overflow: auto; */ /* Add vertical scrollbar when content overflows */
+        max-height: 100%;
+        overflow: hidden;
+        display: flex; /* Use a flex container to center the content */
+        align-items: center; /* Vertically center the content */
+        justify-content: center; /* Horizontally center the content */
+    }
+
+    .sidebar-right {
+      flex: 1;
+      background: #f1c40f;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+      max-height: 100%; /* Make the sidebar no more than 100% high */
+      overflow-y: auto; /* Add vertical scrollbar as necessary */
+    }
+    
+    .thumbnail {
+      max-width: 100%; /* Make images responsive */
+      max-height: 100%; /* Make images responsive */
+      width: auto; /* Maintain aspect ratio */
+      height: auto; /* Maintain aspect ratio */
+      display: block;
+      margin: 5px;
+    }
+    /*
+    .sidebar-right {
+        flex: 1;
+        background: #f1c40f;
+        color: #fff;
+        padding: 10px;
+        text-align: center;
+    }
+*/
+    /*
+    .svgdiv {
+        position: absolute;
+        top: 0;
+        left: 0;
+
+    }
+    */
+    #svgSvgId {
+        /*width:100%;
+        height:100%;*/
+        /*transform-origin: center;*/
+    }
+    #pattern-sliders-div div, #image-info-div, .sidebar-left div div {
+        display: inline-block;
+        background: rgba(255,255,255,0.1);
+        padding: 10px;
+        margin:5px;
+    }
+
+    .sidebar-left div div {
+        width: 90%;
+    }
+</style>
+</head>
+<!--<body onload="doSvg('svgDivId');">-->
+<body onload="makeContentDraggable(); doSlider();">  
+
+<div class="container">
+    <div class="top-bar">Image Pattern Controls
+        <div id="image-info-div">
+            <label for="img-url">Img. Url</label>
+            <input type="text" id="img-url" value="test.jpg">
+        
+            <label for="img-width">Img. w</label>
+            <input type="text" id="img-width" value="1024">
+
+            <label for="img-height">Img. h</label>
+            <input type="text" id="img-height" value = "768">
+
+            <input type="hidden" id="img-have-w-h" value = "0">
+        </div>
+        <div id="pattern-sliders-div">
+            <div>
+                <input type="range" id="slider-patscale" min="0" max="50" step="0.1" value="20">
+                <label for="slider-patscale">Pat. Scale</label>
+                <p id="patscale-sliderValue">Value: 0</p>  
+            </div>
+            <div>
+                <input type="range" id="slider-imgscale" min="0.1" max="10" step="0.1" value="1">
+                <label for="slider-imgscale">Img. Scale</label>
+                <p id="imgscale-sliderValue">Value: 0</p>  
+            </div>
+            <div>
+                <input type="range" id="slider-amplitude" min="0.1" max="10" step="0.1" value="1">
+                <label for="slider-amplitude">Pat. Amplitude</label>
+                <p id="amplitude-sliderValue">Value: 0</p>  
+            </div>
+            <div>
+                <input type="range" id="slider-patrot" min="0.1" max="180" step="0.5" value="0">
+                <label for="slider-patrot">Pat. Rotation</label>
+                <p id="patrot-sliderValue">Value: 0</p>  
+            </div>
+        </div>
+    </div>
+    <div class="content">
+        <div class="sidebar-left">Threshold image controls
+            <div>
+                <div>
+                    <input type="range" id="slider-highlights" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-highlights">Highlights</label>
+                    <p id="highlights-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-light" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-light">Light</label>
+                    <p id="light-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-lighter" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-lighter">Lighter</label>
+                    <p id="lighter-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-darker" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-darker">Darker</label>
+                    <p id="darker-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-dark" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-dark">Dark</label>
+                    <p id="dark-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-shadows" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <label for="slider-shadows">Darker</label>
+                    <p id="shadows-sliderValue">Value: 0</p>  
+                </div>
+                <div>
+                    <input type="range" id="slider-original" class="threshold-range-sliders" min="0" max="1" step="0.01" value="0.5">
+                    <label for="slider-original">Colour</label>
+                    <p id="original-sliderValue">Value: 0</p>  
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content"><!--Main Content (60%)-->
+            <div id="scrollable-contentId" class="scrollable-content">
+                <div id="svgDivId">
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-right">Threshold Images
+            <div>
+                <figure>
+                    <img id="img-original" class="thumbnail" src="">
+                    <figcaption>Original</figcaption>
+                </figure>   
+
+                <figure>
+                    <img id="img-highlights" class="thumbnail" src="">
+                    <figcaption>Highlights</figcaption>
+                </figure>   
+                
+                <figure>                
+                    <img id="img-light" class="thumbnail" src="">
+                    <figcaption>Light</figcaption>
+                </figure>   
+                
+                <figure>
+                    <img id="img-lighter" class="thumbnail" src="">
+                    <figcaption>Lighter</figcaption>
+                </figure>   
+
+                <figure>              
+                    <img id="img-darker" class="thumbnail" src="">
+                    <figcaption>Darker</figcaption>
+                </figure>   
+
+                <figure>                
+                    <img id="img-dark" class="thumbnail" src="">
+                    <figcaption>Dark</figcaption>
+                </figure>   
+                
+                <figure>
+                    <img id="img-shadows" class="thumbnail" src="">
+                    <figcaption>Shadows</figcaption>
+                </figure>   
+
+            </div>
+        </div>
+       
+    </div>
+    <div id="svgs" style="background:#f1c40f;"></div>
+</div>
+
+
+</body>
+</html>
