@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script type="text/javascript">
-    function sine_path(strokewidth, svg_elementid, pat_rot_angle, img_url, w, h, pat_scalefactor, a, patrot2_angle) {
+    function sine_path(svg, strokewidth, svg_elementid, pat_rot_angle, img_url, w, h, pat_scalefactor, a, patrot2_angle, pat_freq) {
         var Phi = 1.618033988749894;
         
         var wanted_dpi = 48; //300;
@@ -19,15 +19,15 @@
         //var svg = document.getElementById('sine_wave').children[0];
         //svg = document.getElementById(svg_elementid).children[0];
 
-        svg = document.getElementById(svg_elementid);                   // svg_elementid is the id of the containing object, if available
+        //svg = document.getElementById(svg_elementid);                   // svg_elementid is the id of the containing object, if available
         
-        if (!svg) {                                                     // otherwise create svg
-            svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            svg.setAttribute('id', svg_id);
-        }
-        else {
-            svg = svg.children[0];                                      // if containing tag was available, get svg (backward compat for earlier prog)
-        }
+        //if (!svg) {                                                     // otherwise create svg
+        //    svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        //svg.setAttribute('id', svg_id);
+        //}
+        //else {
+        //    svg = svg.children[0];                                      // if containing tag was available, get svg (backward compat for earlier prog)
+        //}
 
         var origin = { //origin of axes
             x: 0,
@@ -46,7 +46,7 @@
         var amplitude = (18 / Phi) * (svg_height / 15120) * a; //dpi_multiplier; //scalefactor; //(5/1080) * svg_height; // wave amplitude
         var rarity = 1; // point spacing
         //var freq = 0.04; // angular frequency
-        var freq =((2*Math.PI) / svg_width) * 32;
+        var freq =((2*Math.PI) / svg_width) * pat_freq; //32;
         var pat_width = (2 * Math.PI)/freq; 
         var pat_height = pitch;
         var phase = 0; // phase angle
@@ -71,9 +71,9 @@
         
         for (var j = 0; j < 4 * numlines_per_pat; j++) {
             path_txt += "M 0 " + (Math.sin(freq * (0 + phase)) * amplitude + origin.y) + " ";
-            var num_iter_whole_wave = 2 * strokewidth + (2*Math.PI)/freq; 
-            var iter_start = -strokewidth;
-            var iter_end = num_iter_whole_wave + strokewidth;
+            var num_iter_whole_wave = /*2 * strokewidth +*/ (2*Math.PI)/freq; 
+            var iter_start = strokewidth < 1 && strokewidth > 0 ? -1 : -strokewidth; /*-strokewidth;*/
+            var iter_end = num_iter_whole_wave + (strokewidth < 1 && strokewidth > 0 ? 1 : strokewidth); /*strokewidth;*/
             for (var i = iter_start; i < iter_end; i++) {
                 path_txt += "L " + (i * rarity + origin.x) + " " + (Math.sin(freq * (i + phase)) * amplitude + origin.y) + " ";
     
@@ -159,7 +159,7 @@
         box.setAttribute('fill', pattern_url);
 */
         
-        svg.setAttribute('id', svg_id);
+        //svg.setAttribute('id', svg_id);
 //        svg.appendChild(box);
         
         //renderSvgToCanvas("#" + svg_id, canvas_id, svg_elementid, false); // svg_elementid is the id of the containing div of the svg
@@ -239,13 +239,21 @@
                 var img_dark = document.getElementById("img-dark");
                 var img_shadows = document.getElementById("img-shadows");
 
-                img_original.src = img_url;
-                img_highlights.src = applyThreshold(img, 64, w, h);
-                img_light.src = applyThreshold(img, 96, w, h);
-                img_lighter.src = applyThreshold(img, 128, w, h);
-                img_darker.src = applyThreshold(img, 140, w, h);
-                img_dark.src = applyThreshold(img, 172, w, h);
-                img_shadows.src = applyThreshold(img, 204, w, h);
+                var t_original = document.getElementById("slider-original").value;
+                var t_highlights = document.getElementById("slider-highlights").value;
+                var t_light = document.getElementById("slider-light").value;
+                var t_lighter = document.getElementById("slider-lighter").value;
+                var t_darker = document.getElementById("slider-darker").value;
+                var t_dark = document.getElementById("slider-dark").value;
+                var t_shadows = document.getElementById("slider-shadows").value;
+
+                img_original.src = applyThreshold(img, t_original, w, h, true);
+                img_highlights.src = applyThreshold(img, t_highlights, w, h);
+                img_light.src = applyThreshold(img, t_light, w, h);
+                img_lighter.src = applyThreshold(img, t_lighter, w, h);
+                img_darker.src = applyThreshold(img, t_darker, w, h);
+                img_dark.src = applyThreshold(img, t_dark, w, h);
+                img_shadows.src = applyThreshold(img, t_shadows, w, h);
             }
             else {
                 var threshold_slider = document.getElementById(threshold_slider_id);
@@ -265,7 +273,7 @@
 
 
     // Function to apply the threshold
-    function applyThreshold(imageElement, threshold, w, h) {      
+    function applyThreshold(imageElement, threshold, w, h, bGetImageOnly) {      
         // Create a dynamic canvas element
         const canvas = document.createElement('canvas');
         canvas.width = w; // Set the canvas width (adjust as needed)
@@ -280,27 +288,28 @@
         // Get the image data
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // Apply the threshold to the image data
-        for (let i = 0; i < imageData.data.length; i += 4) {
-        const r = imageData.data[i];
-        const g = imageData.data[i + 1];
-        const b = imageData.data[i + 2];
-        const gray = (r + g + b) / 3;
+        if (typeof bGetImageOnly === 'undefined') {
+            // Apply the threshold to the image data
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                const gray = (r + g + b) / 3;
 
-        if (gray < threshold) {
-        // Set pixel to black
-        imageData.data[i] = 0;
-        imageData.data[i + 1] = 0;
-        imageData.data[i + 2] = 0;
-        } else {
-        // Set pixel to white
-        imageData.data[i] = 255;
-        imageData.data[i + 1] = 255;
-        imageData.data[i + 2] = 255;
-        imageData.data[i + 3] = 0;
+                if (gray < threshold) {
+                    // Set pixel to black
+                    imageData.data[i] = 0;
+                    imageData.data[i + 1] = 0;
+                    imageData.data[i + 2] = 0;
+                } else {
+                    // Set pixel to white
+                    imageData.data[i] = 255;
+                    imageData.data[i + 1] = 255;
+                    imageData.data[i + 2] = 255;
+                    imageData.data[i + 3] = 0;
+                }
+            }
         }
-        }
-
         // Put the modified image data back on the canvas
         ctx.putImageData(imageData, 0, 0);
 
@@ -359,6 +368,9 @@
         sliderValueDisplay = document.getElementById("patrot-sliderValue");
         addSliderEventHandlers(slider, sliderValueDisplay);
 
+        slider = document.getElementById("slider-patfreq");
+        sliderValueDisplay = document.getElementById("patfreq-sliderValue");
+        addSliderEventHandlers(slider, sliderValueDisplay);      
         
         var imgurl_input = document.getElementById("img-url");
         imgurl_input.addEventListener("change", function() {
@@ -403,6 +415,7 @@
         document.getElementById("slider-imgscale").dispatchEvent(inputEvent);
         document.getElementById("slider-amplitude").dispatchEvent(inputEvent);
         document.getElementById("slider-patrot").dispatchEvent(inputEvent);
+        document.getElementById("slider-patfreq").dispatchEvent(inputEvent);
     }
 
     function addSliderEventHandlers(slider, sliderValueDisplay) {
@@ -443,11 +456,13 @@
         var s = getSliderValue("slider-imgscale");
         var a = getSliderValue("slider-amplitude");
         var pr2 = getSliderValue("slider-patrot");
+        var pf = getSliderValue("slider-patfreq");
 
         var svgId = "svgSvgId";
 
         var pat_scalefactor = p * (w / 15120);
 
+        var img_original_src = document.getElementById("img-original").src;
         var img_highlights_src = document.getElementById("img-highlights").src;
         var img_light_src = document.getElementById("img-light").src;
         var img_lighter_src = document.getElementById("img-lighter").src;
@@ -463,22 +478,20 @@
 
         var img_colour = document.createElementNS('http://www.w3.org/2000/svg','image');
         var imgOpacity = document.getElementById("slider-original").value;
-        img_colour.setAttributeNS('http://www.w3.org/1999/xlink','href', img_url);
-        //img_colour.setAttributeNS(null, 'mask', mask_url);
-
+        img_colour.setAttributeNS('http://www.w3.org/1999/xlink','href', img_original_src);
         img_colour.setAttribute('height', h);
         img_colour.setAttribute('width', w);
         img_colour.setAttribute('x', 0);
         img_colour.setAttribute('y', 0);
         img_colour.setAttribute('opacity', imgOpacity);
-        svg.appendChild(img_colour);
 
-        svg.appendChild(sine_path(3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2));
-        svg.appendChild(sine_path(2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2));
-        svg.appendChild(sine_path(1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2));
-        svg.appendChild(sine_path(0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2));
-        svg.appendChild(sine_path(0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2));
-        svg.appendChild(sine_path(0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2));
+        svg.appendChild(img_colour);
+        sine_path(svg, 3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, 2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, 1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, 0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, 0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, 0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2, pf);
 
 /*        
         var svgs = document.getElementById("svgs");
@@ -707,9 +720,14 @@ body {
                 <p id="amplitude-sliderValue">Value: 0</p>  
             </div>
             <div>
-                <input type="range" id="slider-patrot" min="0.1" max="180" step="0.5" value="0">
+                <input type="range" id="slider-patrot" min="0.0" max="180" step="0.5" value="0">
                 <label for="slider-patrot">Pat. Rotation</label>
                 <p id="patrot-sliderValue">Value: 0</p>  
+            </div>
+            <div>
+                <input type="range" id="slider-patfreq" min="0.1" max="128" step="0.1" value="32">
+                <label for="slider-patrot">Pat. Frequency</label>
+                <p id="patfreq-sliderValue">Value: 0</p>  
             </div>
         </div>
     </div>
@@ -717,33 +735,33 @@ body {
         <div class="sidebar-left">Threshold image controls
             <div>
                 <div>
-                    <input type="range" id="slider-highlights" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <input type="range" id="slider-highlights" class="threshold-range-sliders" min="0" max="255" step="1" value="199">
                     <label for="slider-highlights">Highlights</label>
                     <p id="highlights-sliderValue">Value: 0</p>  
                 </div>
                 <div>
-                    <input type="range" id="slider-light" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <input type="range" id="slider-light" class="threshold-range-sliders" min="0" max="255" step="1" value="152">
                     <label for="slider-light">Light</label>
                     <p id="light-sliderValue">Value: 0</p>  
                 </div>
                 <div>
-                    <input type="range" id="slider-lighter" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <input type="range" id="slider-lighter" class="threshold-range-sliders" min="0" max="255" step="1" value="144">
                     <label for="slider-lighter">Lighter</label>
                     <p id="lighter-sliderValue">Value: 0</p>  
                 </div>
                 <div>
-                    <input type="range" id="slider-darker" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <input type="range" id="slider-darker" class="threshold-range-sliders" min="0" max="255" step="1" value="138">
                     <label for="slider-darker">Darker</label>
                     <p id="darker-sliderValue">Value: 0</p>  
                 </div>
                 <div>
-                    <input type="range" id="slider-dark" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
+                    <input type="range" id="slider-dark" class="threshold-range-sliders" min="0" max="255" step="1" value="93">
                     <label for="slider-dark">Dark</label>
                     <p id="dark-sliderValue">Value: 0</p>  
                 </div>
                 <div>
-                    <input type="range" id="slider-shadows" class="threshold-range-sliders" min="0" max="255" step="1" value="128">
-                    <label for="slider-shadows">Darker</label>
+                    <input type="range" id="slider-shadows" class="threshold-range-sliders" min="0" max="255" step="1" value="64">
+                    <label for="slider-shadows">Shadows</label>
                     <p id="shadows-sliderValue">Value: 0</p>  
                 </div>
                 <div>
