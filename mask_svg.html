@@ -238,6 +238,7 @@
                 var img_darker = document.getElementById("img-darker");
                 var img_dark = document.getElementById("img-dark");
                 var img_shadows = document.getElementById("img-shadows");
+                var img_blacks = document.getElementById("img-blacks");
 
                 var t_original = document.getElementById("slider-original").value;
                 var t_highlights = document.getElementById("slider-highlights").value;
@@ -246,6 +247,7 @@
                 var t_darker = document.getElementById("slider-darker").value;
                 var t_dark = document.getElementById("slider-dark").value;
                 var t_shadows = document.getElementById("slider-shadows").value;
+                var t_blacks = document.getElementById("slider-blacks").value;
 
                 img_original.src = applyThreshold(img, t_original, w, h, true);
                 img_highlights.src = applyThreshold(img, t_highlights, w, h);
@@ -469,6 +471,7 @@
         var img_darker_src = document.getElementById("img-darker").src;
         var img_dark_src = document.getElementById("img-dark").src;
         var img_shadows_src = document.getElementById("img-shadows").src;
+        var img_blacks_src = document.getElementById("img-blacks").src;
 
         var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute('id', svgId);
@@ -486,6 +489,7 @@
         img_colour.setAttribute('opacity', imgOpacity);
 
         svg.appendChild(img_colour);
+        sine_path(svg, 3.14159265358979 * 1.5, 'g-blacks', 0, img_blacks_src, w, h, pat_scalefactor, a, pr2, pf);
         sine_path(svg, 3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2, pf);
         sine_path(svg, 2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2, pf);
         sine_path(svg, 1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2, pf);
@@ -765,6 +769,11 @@ body {
                     <p id="shadows-sliderValue">Value: 0</p>  
                 </div>
                 <div>
+                    <input type="range" id="slider-blacks" class="threshold-range-sliders" min="0" max="255" step="1" value="24">
+                    <label for="slider-blacks">Blacks</label>
+                    <p id="blacks-sliderValue">Value: 0</p>  
+                </div>
+                <div>
                     <input type="range" id="slider-original" class="threshold-range-sliders" min="0" max="1" step="0.01" value="0.5">
                     <label for="slider-original">Colour</label>
                     <p id="original-sliderValue">Value: 0</p>  
@@ -815,6 +824,10 @@ body {
                     <figcaption>Shadows</figcaption>
                 </figure>   
 
+                <figure>
+                    <img id="img-blacks" class="thumbnail" src="">
+                    <figcaption>Blacks</figcaption>
+                </figure>   
             </div>
         </div>
        
