@@ -708,9 +708,9 @@
                     else {
                         var ditheredImg = document.getElementById(ditheredImgId);
                         ditheredImg.src = "";
-                        var thresholdSlider = document.getElementById(thresholdSliderId);
-                        thresholdSlider.dispatchEvent(new Event('input'));
                     }
+                    var thresholdSlider = document.getElementById(thresholdSliderId);
+                    thresholdSlider.dispatchEvent(new Event('input'));
                 };
 
                 //doThreshold(img_url, gPalette, thresholdRangeSlider.id);
