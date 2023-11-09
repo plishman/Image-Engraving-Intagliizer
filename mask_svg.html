@@ -3,6 +3,221 @@
 <head>
 <meta charset="UTF-8">
 <script type="text/javascript">
+    function kMeansRGBClustering(rgbData, k, maxIterations = 100) {
+    if (k <= 0 || k > rgbData.length) {
+        throw new Error('Invalid value of k.');
+    }
+
+    // Randomly initialize cluster centroids
+    let centroids = [];
+    for (let i = 0; i < k; i++) {
+        centroids.push(rgbData[Math.floor(Math.random() * rgbData.length)]);
+    }
+
+    let previousCentroids = [];
+    let clusters = [];
+
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+        // Assign RGB triads to the nearest cluster
+        const clusters = new Array(k).fill().map(() => []);
+
+        for (const rgbTriad of rgbData) {
+        const distances = centroids.map(centroid => getRGBDistance(rgbTriad, centroid));
+        const nearestCluster = distances.indexOf(Math.min(...distances));
+        clusters[nearestCluster].push(rgbTriad);
+        }
+
+        // Calculate new cluster centroids
+        previousCentroids = centroids.slice();
+        centroids = clusters.map(cluster => calculateRGBCentroid(cluster));
+
+        // Check for convergence
+        let hasConverged = true;
+        for (let i = 0; i < k; i++) {
+        if (!arraysEqualRGB(centroids[i], previousCentroids[i])) {
+            hasConverged = false;
+            break;
+        }
+        }
+
+        if (hasConverged) {
+        break;
+        }
+    }
+
+    return {
+        centroids,
+        clusters,
+    };
+    }
+
+    function arraysEqualRGB(arr1, arr2) {
+        if (arr1.length !== arr2.length) {
+            return false;
+        }
+
+        for (let i = 0; i < arr1.length; i++) {
+            if (arr1[i][0] !== arr2[i][0] || arr1[i][1] !== arr2[i][1] || arr1[i][2] !== arr2[i][2]) {
+            return false;
+            }
+        }
+
+        return true;
+    }
+
+    function getRGBDistance(triadA, triadB) {
+    // Euclidean distance between two RGB triads
+    return Math.sqrt(
+        (triadA[0] - triadB[0]) ** 2 +
+        (triadA[1] - triadB[1]) ** 2 +
+        (triadA[2] - triadB[2]) ** 2
+    );
+    }
+
+    function calculateRGBCentroid(cluster) {
+    // Calculate the centroid of a cluster of RGB triads
+    if (cluster.length === 0) {
+        return [0, 0, 0];
+    }
+    const centroid = [0, 0, 0];
+    for (const rgbTriad of cluster) {
+        for (let i = 0; i < 3; i++) {
+        centroid[i] += rgbTriad[i];
+        }
+    }
+    return centroid.map(value => value / cluster.length);
+    }
+</script>
+<script type="text/javascript">
+    // Floyd-Steinberg dithering method
+    function reducePaletteWithDithering(imageData, numColors, palette) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = new Uint8Array(imageData.data.buffer);
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+
+            // Find the closest color in the reduced palette
+            let closestColor = findClosestColor(r, g, b, numColors, palette);
+
+            // Set the new pixel values
+            data[index] = closestColor.r;
+            data[index + 1] = closestColor.g;
+            data[index + 2] = closestColor.b;
+
+            // Calculate the error
+            const errorR = r - closestColor.r;
+            const errorG = g - closestColor.g;
+            const errorB = b - closestColor.b;
+
+            // Distribute the error to neighboring pixels
+            distributeError(x, y, width, height, errorR, errorG, errorB, data, numColors);
+            }
+        }
+
+        // Update the ImageData with the modified data
+        imageData.data.set(data);
+    }
+
+    function generateColorPalette(imageData, numColors) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = new Uint8Array(imageData.data.buffer);
+
+        // Collect the colors from the image
+        const colors = [];
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const index = (y * width + x) * 4;
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                colors.push([r, g, b]);
+            }
+        }
+
+        // Run k-means clustering to find the dominant colors
+        //const kmeans = new KMeans();
+        const palette = kMeansRGBClustering(colors, numColors);
+
+        // Convert clustered colors back to the RGB format
+        //const palette = clusteredColors.map((cluster) => {
+        //    const [r, g, b] = cluster.centroid;
+        //    return { r, g, b };
+        //});
+
+        return palette.centroids;
+    }
+
+    function findClosestColor(r, g, b, numColors, palette) {
+        // In a real application, you would compare the input color (r, g, b)
+        // with a reduced color palette and return the closest color.
+        // For simplicity, let's assume we have an array of sample colors
+        // and we find the closest one.
+
+        //const sampleColors = [
+        //    { r: 255, g: 0, b: 0 },  // Red
+        //    { r: 0, g: 255, b: 0 },  // Green
+        //    { r: 0, g: 0, b: 255 },  // Blue
+        //    // Add more sample colors here
+        //];
+
+        let closestColor = palette[0];
+        let minDistance = getColorDistance(r, g, b, closestColor[0], closestColor[1], closestColor[2]);
+
+        for (let i = 1; i < palette.length; i++) {
+            const color = palette[i];
+            const distance = getColorDistance(r, g, b, color[0], color[1], color[2]);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestColor = color;
+            }
+        }
+
+        return {r: closestColor[0], g: closestColor[1], b: closestColor[2]};
+    }
+
+    function getColorDistance(r1, g1, b1, r2, g2, b2) {
+    // Calculate the Euclidean color distance between two colors
+        return Math.sqrt(
+            Math.pow(r2 - r1, 2) +
+            Math.pow(g2 - g1, 2) +
+            Math.pow(b2 - b1, 2)
+        );
+    }
+
+    function distributeError(x, y, width, height, errorR, errorG, errorB, data, numColors) {
+        // Floyd-Steinberg error diffusion
+        // Errors are distributed to neighboring pixels
+
+        const errorDistribute = [
+            { x: 1, y: 0, factor: 7 / 16 },
+            { x: -1, y: 1, factor: 3 / 16 },
+            { x: 0, y: 1, factor: 5 / 16 },
+            { x: 1, y: 1, factor: 1 / 16 }
+        ];
+
+        for (const neighbor of errorDistribute) {
+            const newX = x + neighbor.x;
+            const newY = y + neighbor.y;
+
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+            const newIndex = (newY * width + newX) * 4;
+            data[newIndex] = Math.min(255, Math.max(0, data[newIndex] + errorR * neighbor.factor));
+            data[newIndex + 1] = Math.min(255, Math.max(0, data[newIndex + 1] + errorG * neighbor.factor));
+            data[newIndex + 2] = Math.min(255, Math.max(0, data[newIndex + 2] + errorB * neighbor.factor));
+            }
+        }
+    }
+</script>
+
+<script type="text/javascript">
     function sine_path(svg, strokewidth, svg_elementid, pat_rot_angle, img_url, w, h, pat_scalefactor, a, patrot2_angle, pat_freq) {
         var Phi = 1.618033988749894;
         
@@ -222,6 +437,8 @@
 //renderSvgToCanvas("#mySvg", "myCanvas");
 </script>
 <script type="text/javascript">
+    var gPalette;
+
     function doThreshold(img_url, threshold_slider_id) {
         const img = new Image();
         img.src = img_url;
@@ -273,7 +490,6 @@
 
     }
 
-
     // Function to apply the threshold
     function applyThreshold(imageElement, threshold, w, h, bGetImageOnly) {      
         // Create a dynamic canvas element
@@ -291,7 +507,11 @@
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         if (typeof bGetImageOnly === 'undefined') {
-            // Apply the threshold to the image data
+            //var numColours = 64;
+            //var palette = generateColorPalette(imageData, numColours);
+            //reducePaletteWithDithering(imageData, numColours, palette);
+
+                    // Apply the threshold to the image data
             for (let i = 0; i < imageData.data.length; i += 4) {
                 const r = imageData.data[i];
                 const g = imageData.data[i + 1];
@@ -333,6 +553,33 @@
         */
     }
      
+    async function doDither(img, numColours, thresholdSliderId, ditheredImgId) {
+        const paletteCanvas = document.createElement('canvas');
+        paletteCanvas.width = (img.width <= 640) ? img.width : 640; // Set the canvas width (adjust as needed)
+        paletteCanvas.height = (img.width <= 640) ? img.height : img.height * (640 / img.width);
+        const paletteCtx = paletteCanvas.getContext('2d');
+        paletteCtx.drawImage(img, 0, 0, paletteCanvas.width, paletteCanvas.height);
+        const paletteImageData = paletteCtx.getImageData(0, 0, paletteCanvas.width, paletteCanvas.height);
+        var palette = generateColorPalette(paletteImageData, numColours);
+        //var jsonPalette = JSON.stringify(palette);
+        //document.getElementById(paletteId).value = jsonPalette;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; // Set the canvas width (adjust as needed)
+        canvas.height = img.height; // Set the canvas height (adjust as needed)
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        //var palette = generateColorPalette(imageData, numColours);
+        reducePaletteWithDithering(imageData, numColours, palette);
+        ctx.putImageData(imageData, 0, 0);
+        const dataURL = canvas.toDataURL('image/png');
+        var ditheredImg = document.getElementById(ditheredImgId);
+        ditheredImg.src = dataURL;
+        doThreshold(dataURL, thresholdSliderId);
+        return dataURL;
+    }
+
     function doSlider() {
         // threshold sliders
         // Get all range elements with the class 'my-range'
@@ -340,64 +587,272 @@
 
         // Add a change event listener to each range element
         thresholdRangeSliders.forEach(function(rangeElement) {
+            let timer;
+
+            rangeElement.addEventListener('wheel', (e) => {
+                // Prevent the default behavior of the mouse wheel, which may scroll the page
+                e.preventDefault();
+
+                // Calculate the new value based on the wheel movement
+                const step = parseFloat(rangeElement.step);
+                const newValue = parseFloat(rangeElement.value) + (e.deltaY > 0 ? -step : step);
+
+                // Ensure the new value stays within the slider's min and max range
+                rangeElement.value = Math.min(Math.max(newValue, parseFloat(rangeElement.min)), parseFloat(rangeElement.max));
+
+                var thresholdRangeSliderId = event.target.id;
+                var imgSliderValueId = thresholdRangeSliderId.replace("slider-", "") + "-sliderValue";
+                document.getElementById(imgSliderValueId).innerText = event.target.value;
+
+                clearTimeout(timer);
+
+                timer = setTimeout(() => {
+                    rangeElement.dispatchEvent(new Event('input'));
+                }, 100);
+            });
+
             rangeElement.addEventListener('input', function(event) {
                 // Identify the range element that triggered the event
                 const thresholdRangeSlider = event.target;
-                var img_url = document.getElementById("img-url").value;
+                //var img_url = document.getElementById("img-url").value;
                 var imgSliderId = thresholdRangeSlider.id;
+                console.log("threshold range sliders: input event: " + imgSliderId);
                 var imgSliderValueId = imgSliderId.replace("slider-", "") + "-sliderValue";
-                document.getElementById(imgSliderValueId).innerText = "Value: " + event.target.value;
+                document.getElementById(imgSliderValueId).innerText = event.target.value;
+                
+                var thresholdImageId = "img-original";
+                var thresholdImage = document.getElementById(thresholdImageId);
+                var img_url = thresholdImage.src;
+                
+                if (imgSliderId != "slider-original") {
+                    var checkboxDitherId = "checkbox-dither-" + imgSliderId.replace("slider-", "");
+                    var checkboxDither = document.getElementById(checkboxDitherId);
+                    var ditherEnabled = checkboxDither.checked;
 
+                    if (ditherEnabled) {
+                        thresholdImageId = "img-dither-" + imgSliderId.replace("slider-", "");
+                    }
+    
+                    thresholdImage = document.getElementById(thresholdImageId);
+                    img_url = thresholdImage.src;
+                }
                 doThreshold(img_url, thresholdRangeSlider.id);
-            });
+            }); 
         });
     
-    
-        // pattern sliders
-        var slider = document.getElementById("slider-patscale");
-        var sliderValueDisplay = document.getElementById("patscale-sliderValue");
-        addSliderEventHandlers(slider, sliderValueDisplay);
 
-        slider = document.getElementById("slider-imgscale");
-        sliderValueDisplay = document.getElementById("imgscale-sliderValue");
-        addSliderEventHandlers(slider, sliderValueDisplay);
+        // Dither range sliders
+        const ditherRangeSliders = document.querySelectorAll('.dither-range-sliders');
 
-        slider = document.getElementById("slider-amplitude");
-        sliderValueDisplay = document.getElementById("amplitude-sliderValue");
-        addSliderEventHandlers(slider, sliderValueDisplay);
+        // Add a change event listener to each range element
+        ditherRangeSliders.forEach(function(rangeElement) {
+            let timer;
 
-        slider = document.getElementById("slider-patrot");
-        sliderValueDisplay = document.getElementById("patrot-sliderValue");
-        addSliderEventHandlers(slider, sliderValueDisplay);
+            rangeElement.addEventListener('wheel', (e) => {
+                // Prevent the default behavior of the mouse wheel, which may scroll the page
+                e.preventDefault();
 
-        slider = document.getElementById("slider-patfreq");
-        sliderValueDisplay = document.getElementById("patfreq-sliderValue");
-        addSliderEventHandlers(slider, sliderValueDisplay);      
+                // Calculate the new value based on the wheel movement
+                const step = parseFloat(rangeElement.step);
+                const newValue = parseFloat(rangeElement.value) + (e.deltaY > 0 ? -step : step);
+
+                // Ensure the new value stays within the slider's min and max range
+                rangeElement.value = Math.min(Math.max(newValue, parseFloat(rangeElement.min)), parseFloat(rangeElement.max));
+                
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    rangeElement.dispatchEvent(new Event('change'));
+                }, 500);
+
+                // Trigger the 'input' event to update the slider's display
+                rangeElement.dispatchEvent(new Event('input'));
+            });
+
+            rangeElement.addEventListener('input', function(event) {
+                const ditherRangeSlider = event.target;
+                var imgSliderId = ditherRangeSlider.id;
+                var imgSliderValueId = imgSliderId.replace("slider-", "") + "-sliderValue";
+                document.getElementById(imgSliderValueId).innerText = event.target.value;
+            });
+
+            rangeElement.addEventListener('change', function(event) {
+                // Identify the range element that triggered the event
+                const ditherRangeSlider = event.target;
+                //var img_url = document.getElementById("img-url").value;
+                var imgSliderId = ditherRangeSlider.id;
+
+                ditherRangeSlider.dispatchEvent(new Event('input')); // update value display
+
+                //var imgSliderValueId = imgSliderId.replace("slider-", "") + "-sliderValue";
+                //document.getElementById(imgSliderValueId).innerText = event.target.value;
+                var numColours = parseInt(event.target.value);
+                var paletteId = "dither-palette-" + imgSliderId.replace("slider-dither-", "");
+                var ditheredImgId = "img-dither-" + imgSliderId.replace("slider-dither-", "");
+                var thresholdSliderId = imgSliderId.replace("dither-", "");
+                var haveImage = document.getElementById("img-have-w-h").value;
+                if (haveImage != "1") return;
+
+                //var img_url = document.getElementById("img-url").value;
+                var imgOriginal = document.getElementById("img-original");
+                const img = new Image();
+                img.src = imgOriginal.src;
         
+                var checkboxIdForDitherRangeSlider = imgSliderId.replace("slider-", "checkbox-");
+                var checkboxForDitherRangeSlider = document.getElementById(checkboxIdForDitherRangeSlider);
+                var ditherEnabled = checkboxForDitherRangeSlider.checked;
+
+                img.onload = async function() {
+                    if (ditherEnabled) {
+                        await doDither(img, numColours, thresholdSliderId, ditheredImgId);
+                    }
+                    else {
+                        var ditheredImg = document.getElementById(ditheredImgId);
+                        ditheredImg.src = "";
+                        var thresholdSlider = document.getElementById(thresholdSliderId);
+                        thresholdSlider.dispatchEvent(new Event('input'));
+                    }
+                };
+
+                //doThreshold(img_url, gPalette, thresholdRangeSlider.id);
+            });
+        });
+
+        // dither range checkboxes
+        const ditherCheckboxes = document.querySelectorAll('.dither-checkbox');
+        ditherCheckboxes.forEach(function(checkboxElement) {
+            var checkboxId = checkboxElement.id;
+            var rangeSliderForId = checkboxId.replace("checkbox-", "slider-");
+            var rangeSlider = document.getElementById(rangeSliderForId);
+
+            if(checkboxId == "checkbox-dither-highlights") {
+                checkboxElement.checked = true;
+            }
+            else {
+                checkboxElement.checked = false;
+            }
+
+            checkboxElement.addEventListener('change', function(event) {
+                var checkboxId = event.target.id;
+                console.log(checkboxId);
+                var ditherRangeSliderForCheckboxId = checkboxId.replace("checkbox-dither-", "slider-dither-");
+                var ditherRangeSlider = document.getElementById(ditherRangeSliderForCheckboxId);
+                
+                var checked = event.target.checked;
+                ditherRangeSlider.disabled = !checked;
+
+
+                ditherRangeSlider.dispatchEvent(new Event('change'));    
+            });
+
+            //rangeSlider.dispatchEvent(new Event('change'));        
+        });
+
+
+        // pattern sliders
+        const patternRangeSliders = document.querySelectorAll('.pattern-sliders');
+        patternRangeSliders.forEach(function(rangeElement) {
+            rangeElement.addEventListener('wheel', (e) => {
+                // Prevent the default behavior of the mouse wheel, which may scroll the page
+                e.preventDefault();
+
+                // Calculate the new value based on the wheel movement
+                const step = parseFloat(rangeElement.step);
+                const newValue = parseFloat(rangeElement.value) + (e.deltaY > 0 ? -step : step);
+
+                // Ensure the new value stays within the slider's min and max range
+                rangeElement.value = Math.min(Math.max(newValue, parseFloat(rangeElement.min)), parseFloat(rangeElement.max));
+                    rangeElement.dispatchEvent(new Event('input'));
+            });
+
+            rangeElement.addEventListener("input", function() {
+                var patSliderValueId = rangeElement.id.replace("slider-", "") + "-sliderValue";
+                var patSliderValue = document.getElementById(patSliderValueId);
+                patSliderValue.textContent = "Value: " + rangeElement.value;
+                
+                var haveImage = document.getElementById("img-have-w-h").value;
+                if (haveImage == "1") {
+                    doSvg("svgDivId");
+                }
+                //updateScroll();
+            });
+
+            //slider.addEventListener("change", function() {
+                // Call a function with the value of the slider when it's released
+                //doSvg("svgDivId", slider.value);
+            //});
+        });
+
+        // image url textbox
         var imgurl_input = document.getElementById("img-url");
         imgurl_input.addEventListener("change", function() {
             const thresholdRangeSliders = document.querySelectorAll('.threshold-range-sliders');
+
             var inputEvent = new Event('input', {
                 bubbles: true, // Allow the event to bubble up the DOM
                 cancelable: true, // Allow the event to be cancelable
             });
 
-            thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
-                thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
+            var changeEvent = new Event('change', {
+                bubbles: true, // Allow the event to bubble up the DOM
+                cancelable: true, // Allow the event to be cancelable
             });
+
+            //thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
+            //    thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
+            //});
             
             document.getElementById("img-have-w-h").value = 0;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
             var img = new Image();
             img.src = document.getElementById("img-url").value; // Replace with the actual image URL
             img.onload = function() {
                 document.getElementById("img-width").value = img.width;
                 document.getElementById("img-height").value = img.height;
                 document.getElementById("img-have-w-h").value = 1;
-                doThreshold(img.src);
+
+                console.log("img-url changed: have image");
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+                const dataURL = canvas.toDataURL('image/png');
+
+                var imgOriginal = document.getElementById("img-original");
+                imgOriginal.src = dataURL;
+                
+                imgOriginal.onload = function() {
+                    ditherCheckboxes.forEach(function(ditherCheckbox) {
+                        ditherCheckbox.dispatchEvent(changeEvent); // refresh the Value indicators
+                    });
+                };
+
+                //thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
+                //    thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
+                //});
+
+                //ditherRangeSliders.forEach(function(ditherRangeSlider) {
+                //    ditherRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
+                //    //ditherRangeSlider.dispatchEvent(changeEvent);
+                //});
+
+                //ditherCheckboxes.forEach(function(ditherCheckbox) {
+                //    ditherCheckbox.dispatchEvent(changeEvent); // refresh the Value indicators
+                //});
+
+                //doThreshold(img.src);
+                //doThreshold(dataURL);
                 window.setTimeout(function() {updateScroll()}, 1); // hacky, need to wait for image to load, generate svg and add to dom. Seems to be a problem when loading a new image - image is positioned incorrectly in the viewport otherwise
                 //doSvg("svgDivId");
             };
         });
+
+        document.getElementById('export-button').addEventListener('click', exportSVG);
+
         // Create a new change event
         var changeEvent = new Event('change', {
             bubbles: true, // Allow the event to bubble up the DOM
@@ -413,11 +868,9 @@
         });
 
         // Dispatch the change event on the input element
-        document.getElementById("slider-patscale").dispatchEvent(inputEvent);
-        document.getElementById("slider-imgscale").dispatchEvent(inputEvent);
-        document.getElementById("slider-amplitude").dispatchEvent(inputEvent);
-        document.getElementById("slider-patrot").dispatchEvent(inputEvent);
-        document.getElementById("slider-patfreq").dispatchEvent(inputEvent);
+        patternRangeSliders.forEach(function(rangeElement) {
+            rangeElement.dispatchEvent(new Event('input'));
+        });
     }
 
     function addSliderEventHandlers(slider, sliderValueDisplay) {
@@ -441,7 +894,20 @@
         return 0;
     }
 
+    function linewidth(layerNumber) {
+        var linVal = parseFloat(document.getElementById("slider-patlinearity").value);
+        var widths = [4.71238898038469, 3.14159265358979, 2.35619449019235, 1.5707963267949, 0.785398163397448, 0.392699081698724, 0.196349540849362];
+        var width = widths[layerNumber];
+
+        width = width + ((width * linVal) * layerNumber / 7);
+
+        return width;
+    }
+
     function doSvg(destElementId) {    
+        var downloadButton = document.getElementById("export-button");
+        downloadButton.disabled = true;
+
         var w = 1024;
         var h = 768;
         var img_url = "";
@@ -452,7 +918,11 @@
             img_url = document.getElementById("img-url").value;
         }
 
-        if (img_url == "") return;
+        var have_img = document.getElementById("img-have-w-h").value;
+        if (img_url == "" || have_img != "1") {
+            console.log("doSvg() no image");
+            return;
+        }
 
         var p = getSliderValue("slider-patscale");
         var s = getSliderValue("slider-imgscale");
@@ -477,7 +947,7 @@
         svg.setAttribute('id', svgId);
         svg.setAttribute('width', w);
         svg.setAttribute('height', h);
-        svg.setAttribute("transform", "scale(" + s + ") translate(0,0)");
+        svg.setAttribute("transform", "scale(" + s + ")");
 
         var img_colour = document.createElementNS('http://www.w3.org/2000/svg','image');
         var imgOpacity = document.getElementById("slider-original").value;
@@ -489,26 +959,14 @@
         img_colour.setAttribute('opacity', imgOpacity);
 
         svg.appendChild(img_colour);
-        sine_path(svg, 3.14159265358979 * 1.5, 'g-blacks', 0, img_blacks_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2, pf);
-        sine_path(svg, 0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2, pf);
-
-/*        
-        var svgs = document.getElementById("svgs");
-        while (svgs.firstChild) { svgs.removeChild(svgs.firstChild); }
-    
-        svgs.appendChild(sine_path(3.14159265358979, 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2));
-        svgs.appendChild(sine_path(2.35619449019235,'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2));
-        svgs.appendChild(sine_path(1.5707963267949, 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2));
-        svgs.appendChild(sine_path(0.785398163397448, 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2));
-        svgs.appendChild(sine_path(0.392699081698724, 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2));
-        svgs.appendChild(sine_path(0.196349540849362, 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2));
-*/      
-
+        sine_path(svg, linewidth(0), 'g-blacks', 0, img_blacks_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(1), 'f-shadows', 0, img_shadows_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(2), 'e-dark', 90, img_dark_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(3), 'd-darker', 90, img_darker_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(4), 'c-lighter', 0, img_lighter_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(5), 'b-light', 0, img_light_src, w, h, pat_scalefactor, a, pr2, pf);
+        sine_path(svg, linewidth(6), 'a-highlights', 45, img_highlights_src, w, h, pat_scalefactor, a, pr2, pf);
+        
         oldsvg = document.getElementById(svgId);
         if (oldsvg) {
             oldsvg.setAttribute("id", "oldSvgId");
@@ -520,7 +978,40 @@
             oldsvg.remove();
         }
         updateScroll();
+
+        downloadButton.disabled = false;
     }
+
+
+    function exportSVG() {
+        var have_image = document.getElementById("img-have-w-h").value;
+        if (have_image != "1") {
+            return
+        }
+
+        var filename = document.getElementById('img-url').value + ".svg";
+        
+        // Step 1: Get the SVG content from the DOM
+        const svgElement = document.getElementById('svgSvgId'); // Replace with your SVG element's ID
+        const svgElementCopy = svgElement.cloneNode(true);
+        svgElementCopy.setAttribute("transform-origin", "0 0");
+
+        const svgContent = new XMLSerializer().serializeToString(svgElementCopy);
+
+        // Step 2: Create a Blob with the SVG content
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+
+        // Step 3: Create a download link with the Blob as the href
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = filename; // You can set the filename here
+
+        // Step 4: Trigger a click on the link to start the download
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
 </script>
 
 <script type="text/javascript">
@@ -590,6 +1081,42 @@ body {
       font-family: Arial, sans-serif;
     }
 
+
+    /* Hide the default checkbox */
+    .custom-checkbox input[type="checkbox"] {
+    display: none;
+    }
+
+    /* Define the custom checkbox style */
+    .custom-checkbox .checkmark {
+    position: relative;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: #ccc;
+    border: 1px solid #888;
+    border-radius: 3px;
+    }
+
+    /* Add a checkmark symbol using the ::after pseudo-element */
+    .custom-checkbox .checkmark::after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 6px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid #333;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    }
+
+    /* Show the checkmark when the checkbox is checked */
+    .custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
+    display: block;
+    }
+
     .container {
       display: flex;
       flex-direction: column;
@@ -602,6 +1129,10 @@ body {
       padding: 10px;
       text-align: center;
       flex: 0 0 15%; /* Top bar is exactly 20% high */
+    }
+
+    #button-export {
+        margin-left: 10px;
     }
 
     .content {
@@ -656,38 +1187,50 @@ body {
       display: block;
       margin: 5px;
     }
-    /*
-    .sidebar-right {
-        flex: 1;
-        background: #f1c40f;
-        color: #fff;
-        padding: 10px;
-        text-align: center;
+    
+    #id-threshold-image-controls {
+        margin-bottom: 10px;
     }
-*/
-    /*
-    .svgdiv {
-        position: absolute;
-        top: 0;
-        left: 0;
 
-    }
-    */
-    #svgSvgId {
-        /*width:100%;
-        height:100%;*/
-        /*transform-origin: center;*/
-    }
-    #pattern-sliders-div div, #image-info-div, .sidebar-left div div {
+    #pattern-sliders-div div, #image-info-div, #export-button-div, .threshold-controls div, .dither-controls div {
         display: inline-block;
         background: rgba(255,255,255,0.1);
         padding: 10px;
         margin:5px;
     }
 
-    .sidebar-left div div {
-        width: 90%;
+    .threshold-controls, .threshold-controls div, .dither-controls, .dither-controls div{
+        width: auto;
+        display: block;
+        margin:5px;
     }
+
+    .threshold-rangelabel {
+        display: inline-block;
+        width: 22%;
+        margin-left:10%;
+    }
+
+    .dither-rangelabel {
+        display: inline-block;
+        width: 22%;
+    }
+
+    .custom-checkbox {
+        display: inline-block;
+        width: 10%;
+    }
+
+    .threshold-controls div input, .dither-controls div input {
+        display: inline-block;
+        width: 50%;
+    }
+
+    .threshold-controls div span, .dither-controls div span {
+        display: inline-block;
+        width: 10%;
+    }
+
 </style>
 </head>
 <!--<body onload="doSvg('svgDivId');">-->
@@ -707,76 +1250,162 @@ body {
 
             <input type="hidden" id="img-have-w-h" value = "0">
         </div>
+        <div id="export-button-div">
+            <button id="export-button" class="export-button">Export SVG</button>
+        </div>
         <div id="pattern-sliders-div">
             <div>
-                <input type="range" id="slider-patscale" min="0" max="50" step="0.1" value="20">
+                <input type="range" id="slider-patscale" class="pattern-sliders" min="0" max="50" step="0.1" value="10.8">
                 <label for="slider-patscale">Pat. Scale</label>
                 <p id="patscale-sliderValue">Value: 0</p>  
             </div>
             <div>
-                <input type="range" id="slider-imgscale" min="0.1" max="10" step="0.1" value="1">
+                <input type="range" id="slider-imgscale" class="pattern-sliders" min="0.1" max="10" step="0.1" value="1">
                 <label for="slider-imgscale">Img. Scale</label>
                 <p id="imgscale-sliderValue">Value: 0</p>  
             </div>
             <div>
-                <input type="range" id="slider-amplitude" min="0.1" max="10" step="0.1" value="1">
+                <input type="range" id="slider-amplitude" class="pattern-sliders" min="0.1" max="10" step="0.1" value="1">
                 <label for="slider-amplitude">Pat. Amplitude</label>
                 <p id="amplitude-sliderValue">Value: 0</p>  
             </div>
             <div>
-                <input type="range" id="slider-patrot" min="0.0" max="180" step="0.5" value="0">
+                <input type="range" id="slider-patrot" class="pattern-sliders" min="0.0" max="180" step="0.5" value="0">
                 <label for="slider-patrot">Pat. Rotation</label>
                 <p id="patrot-sliderValue">Value: 0</p>  
             </div>
             <div>
-                <input type="range" id="slider-patfreq" min="0.1" max="128" step="0.1" value="32">
+                <input type="range" id="slider-patfreq" class="pattern-sliders" min="0.1" max="128" step="0.1" value="14.3">
                 <label for="slider-patrot">Pat. Frequency</label>
                 <p id="patfreq-sliderValue">Value: 0</p>  
+            </div>
+            <div>
+                <input type="range" id="slider-patlinearity" class="pattern-sliders" min="-1" max="3" step="0.1" value="0">
+                <label for="slider-patlinearity">Pat. Linearity</label>
+                <p id="patlinearity-sliderValue">Value: 0</p>  
             </div>
         </div>
     </div>
     <div class="content">
-        <div class="sidebar-left">Threshold image controls
-            <div>
-                <div>
-                    <input type="range" id="slider-highlights" class="threshold-range-sliders" min="0" max="255" step="1" value="199">
-                    <label for="slider-highlights">Highlights</label>
-                    <p id="highlights-sliderValue">Value: 0</p>  
+        <div class="sidebar-left">
+            <div id="id-threshold-image-controls">
+                Threshold image controls
+                <div class="threshold-controls">
+                    <div>
+                        <label for="slider-highlights" class="threshold-rangelabel">Highlights</label>
+                        <input type="range" id="slider-highlights" class="threshold-range-sliders" min="0" max="255" step="1" value="180">
+                        <span id="highlights-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-light" class="threshold-rangelabel">Light</label>
+                        <input type="range" id="slider-light" class="threshold-range-sliders" min="0" max="255" step="1" value="160">
+                        <span id="light-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-lighter" class="threshold-rangelabel">Lighter</label>
+                        <input type="range" id="slider-lighter" class="threshold-range-sliders" min="0" max="255" step="1" value="140">
+                        <span id="lighter-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-darker" class="threshold-rangelabel">Darker</label>
+                        <input type="range" id="slider-darker" class="threshold-range-sliders" min="0" max="255" step="1" value="120">
+                        <span id="darker-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-dark" class="threshold-rangelabel">Dark</label>
+                        <input type="range" id="slider-dark" class="threshold-range-sliders" min="0" max="255" step="1" value="100">
+                        <span id="dark-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-shadows" class="threshold-rangelabel">Shadows</label>
+                        <input type="range" id="slider-shadows" class="threshold-range-sliders" min="0" max="255" step="1" value="80">
+                        <span id="shadows-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-blacks" class="threshold-rangelabel">Blacks</label>
+                        <input type="range" id="slider-blacks" class="threshold-range-sliders" min="0" max="255" step="1" value="60">
+                        <span id="blacks-sliderValue">0</span>  
+                    </div>
+                    <div>
+                        <label for="slider-original" class="threshold-rangelabel">Colour</label>
+                        <input type="range" id="slider-original" class="threshold-range-sliders" min="0" max="1" step="0.01" value="0.5">
+                        <span id="original-sliderValue">0</span>  
+                    </div>
                 </div>
-                <div>
-                    <input type="range" id="slider-light" class="threshold-range-sliders" min="0" max="255" step="1" value="152">
-                    <label for="slider-light">Light</label>
-                    <p id="light-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-lighter" class="threshold-range-sliders" min="0" max="255" step="1" value="144">
-                    <label for="slider-lighter">Lighter</label>
-                    <p id="lighter-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-darker" class="threshold-range-sliders" min="0" max="255" step="1" value="138">
-                    <label for="slider-darker">Darker</label>
-                    <p id="darker-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-dark" class="threshold-range-sliders" min="0" max="255" step="1" value="93">
-                    <label for="slider-dark">Dark</label>
-                    <p id="dark-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-shadows" class="threshold-range-sliders" min="0" max="255" step="1" value="64">
-                    <label for="slider-shadows">Shadows</label>
-                    <p id="shadows-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-blacks" class="threshold-range-sliders" min="0" max="255" step="1" value="24">
-                    <label for="slider-blacks">Blacks</label>
-                    <p id="blacks-sliderValue">Value: 0</p>  
-                </div>
-                <div>
-                    <input type="range" id="slider-original" class="threshold-range-sliders" min="0" max="1" step="0.01" value="0.5">
-                    <label for="slider-original">Colour</label>
-                    <p id="original-sliderValue">Value: 0</p>  
+            </div>
+            <div id="id-dither-image-controls">
+                Dither image controls
+                <div class="dither-controls">
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-highlights" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-highlights" class="dither-rangelabel">Highlights</label>
+                        <input type="range" id="slider-dither-highlights" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-highlights-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-highlights" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-light" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-light" class="dither-rangelabel">Light</label>
+                        <input type="range" id="slider-dither-light" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-light-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-light" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-lighter" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-lighter" class="dither-rangelabel">Lighter</label>
+                        <input type="range" id="slider-dither-lighter" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-lighter-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-lighter" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-darker" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-darker" class="dither-rangelabel">Darker</label>
+                        <input type="range" id="slider-dither-darker" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-darker-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-darker" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-dark" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-dark" class="dither-rangelabel">Dark</label>
+                        <input type="range" id="slider-dither-dark" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-dark-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-dark" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-shadows" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-shadows" class="dither-rangelabel">Shadows</label>
+                        <input type="range" id="slider-dither-shadows" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-shadows-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-shadows" class="dither-palette">
+                    </div>
+                    <div>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="checkbox-dither-blacks" class="dither-checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for="slider-dither-blacks" class="dither-rangelabel">Blacks</label>
+                        <input type="range" id="slider-dither-blacks" class="dither-range-sliders" min="2" max="255" step="1" value="32">
+                        <span id="dither-blacks-sliderValue">0</span>  
+                        <input type="hidden" id="dither-palette-blacks" class="dither-palette">
+                    </div>
                 </div>
             </div>
         </div>
@@ -796,36 +1425,43 @@ body {
 
                 <figure>
                     <img id="img-highlights" class="thumbnail" src="">
+                    <img id="img-dither-highlights" class="thumbnail" src="">
                     <figcaption>Highlights</figcaption>
                 </figure>   
                 
                 <figure>                
                     <img id="img-light" class="thumbnail" src="">
+                    <img id="img-dither-light" class="thumbnail" src="">
                     <figcaption>Light</figcaption>
                 </figure>   
                 
                 <figure>
                     <img id="img-lighter" class="thumbnail" src="">
+                    <img id="img-dither-lighter" class="thumbnail" src="">
                     <figcaption>Lighter</figcaption>
                 </figure>   
 
                 <figure>              
                     <img id="img-darker" class="thumbnail" src="">
+                    <img id="img-dither-darker" class="thumbnail" src="">
                     <figcaption>Darker</figcaption>
                 </figure>   
 
                 <figure>                
                     <img id="img-dark" class="thumbnail" src="">
+                    <img id="img-dither-dark" class="thumbnail" src="">
                     <figcaption>Dark</figcaption>
                 </figure>   
                 
                 <figure>
                     <img id="img-shadows" class="thumbnail" src="">
+                    <img id="img-dither-shadows" class="thumbnail" src="">
                     <figcaption>Shadows</figcaption>
                 </figure>   
 
                 <figure>
                     <img id="img-blacks" class="thumbnail" src="">
+                    <img id="img-dither-blacks" class="thumbnail" src="">
                     <figcaption>Blacks</figcaption>
                 </figure>   
             </div>
