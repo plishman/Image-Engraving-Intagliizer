@@ -994,7 +994,8 @@
         // Step 1: Get the SVG content from the DOM
         const svgElement = document.getElementById('svgSvgId'); // Replace with your SVG element's ID
         const svgElementCopy = svgElement.cloneNode(true);
-        svgElementCopy.setAttribute("transform-origin", "0 0");
+        //svgElementCopy.setAttribute("transform-origin", "0 0");
+        svgElementCopy.setAttribute("transform", "scale(1.0)");
 
         const svgContent = new XMLSerializer().serializeToString(svgElementCopy);
 
