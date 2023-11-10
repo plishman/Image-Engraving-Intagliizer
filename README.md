@@ -3,6 +3,6 @@
 
 <h2>Create high-resolution SVG engraving/intaglio-style images</h2>
 
-![image1](./OurLady-pic.jpg "High resolution for print")
+![image1](./OurLady-pic.png)
 
-![image2](./example-pic.jpg "Add accutance to small images")
+![image2](./example-pic.jpg)
