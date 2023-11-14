@@ -750,6 +750,7 @@
 
         // pattern sliders
         const patternRangeSliders = document.querySelectorAll('.pattern-sliders');
+        
         patternRangeSliders.forEach(function(rangeElement) {
             rangeElement.addEventListener('wheel', (e) => {
                 // Prevent the default behavior of the mouse wheel, which may scroll the page
@@ -785,29 +786,20 @@
         // image url textbox
         var imgurl_input = document.getElementById("img-url");
         imgurl_input.addEventListener("change", function() {
-            const thresholdRangeSliders = document.querySelectorAll('.threshold-range-sliders');
-
-            var inputEvent = new Event('input', {
-                bubbles: true, // Allow the event to bubble up the DOM
-                cancelable: true, // Allow the event to be cancelable
-            });
-
-            var changeEvent = new Event('change', {
-                bubbles: true, // Allow the event to bubble up the DOM
-                cancelable: true, // Allow the event to be cancelable
-            });
-
-            //thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
-            //    thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
-            //});
-            
+            handleFileChange();
+            /*
             document.getElementById("img-have-w-h").value = 0;
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
 
             var img = new Image();
-            img.src = document.getElementById("img-url").value; // Replace with the actual image URL
+            if (typeof dataUrl === 'undefined') {
+                img.src = document.getElementById("img-url").value; // Replace with the actual image URL
+            }
+            else {
+                img.src = dataUrl; // Replace with the actual image URL
+            }
             img.onload = function() {
                 document.getElementById("img-width").value = img.width;
                 document.getElementById("img-height").value = img.height;
@@ -827,51 +819,66 @@
                 
                 imgOriginal.onload = function() {
                     ditherCheckboxes.forEach(function(ditherCheckbox) {
-                        ditherCheckbox.dispatchEvent(changeEvent); // refresh the Value indicators
+                        ditherCheckbox.dispatchEvent(new Event('change')); // refresh the Value indicators
                     });
                 };
-
-                //thresholdRangeSliders.forEach(function(thresholdRangeSlider) {
-                //    thresholdRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
-                //});
-
-                //ditherRangeSliders.forEach(function(ditherRangeSlider) {
-                //    ditherRangeSlider.dispatchEvent(inputEvent); // refresh the Value indicators
-                //    //ditherRangeSlider.dispatchEvent(changeEvent);
-                //});
-
-                //ditherCheckboxes.forEach(function(ditherCheckbox) {
-                //    ditherCheckbox.dispatchEvent(changeEvent); // refresh the Value indicators
-                //});
-
-                //doThreshold(img.src);
-                //doThreshold(dataURL);
                 window.setTimeout(function() {updateScroll()}, 1); // hacky, need to wait for image to load, generate svg and add to dom. Seems to be a problem when loading a new image - image is positioned incorrectly in the viewport otherwise
-                //doSvg("svgDivId");
             };
+            */
         });
 
         document.getElementById('export-button').addEventListener('click', exportSVG);
 
-        // Create a new change event
-        var changeEvent = new Event('change', {
-            bubbles: true, // Allow the event to bubble up the DOM
-            cancelable: true, // Allow the event to be cancelable
-        });
-
         // Dispatch the change event on the input element
-        imgurl_input.dispatchEvent(changeEvent);
-
-        var inputEvent = new Event('input', {
-            bubbles: true, // Allow the event to bubble up the DOM
-            cancelable: true, // Allow the event to be cancelable
-        });
+        imgurl_input.dispatchEvent(new Event('change'));
 
         // Dispatch the change event on the input element
         patternRangeSliders.forEach(function(rangeElement) {
             rangeElement.dispatchEvent(new Event('input'));
         });
     }
+
+    function handleFileChange(imgDataUrl) {        
+        document.getElementById("img-have-w-h").value = 0;
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        var img = new Image();
+        if (typeof imgDataUrl === 'undefined') {
+            img.src = document.getElementById("img-url").value; // Replace with the actual image URL
+        }
+        else {
+            img.src = imgDataUrl; // Replace with the actual image URL
+        }
+        img.onload = function() {
+            document.getElementById("img-width").value = img.width;
+            document.getElementById("img-height").value = img.height;
+            document.getElementById("img-have-w-h").value = 1;
+
+            console.log("img-url changed: have image");
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+            context.drawImage(img, 0, 0);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+            const dataURL = canvas.toDataURL('image/png');
+
+            var imgOriginal = document.getElementById("img-original");
+            imgOriginal.src = dataURL;
+            
+            imgOriginal.onload = function() {
+                const ditherCheckboxes = document.querySelectorAll('.dither-checkbox');
+                ditherCheckboxes.forEach(function(ditherCheckbox) {
+                    ditherCheckbox.dispatchEvent(new Event('change')); // refresh the Value indicators
+                });
+            };
+            window.setTimeout(function() {updateScroll()}, 1); // hacky, need to wait for image to load, generate svg and add to dom. Seems to be a problem when loading a new image - image is positioned incorrectly in the viewport otherwise
+        };
+
+    }
+
 
     function addSliderEventHandlers(slider, sliderValueDisplay) {
         slider.addEventListener("input", function() {
@@ -880,10 +887,10 @@
         //updateScroll();
         });
 
-        slider.addEventListener("change", function() {
+        //slider.addEventListener("change", function() {
         // Call a function with the value of the slider when it's released
         //doSvg("svgDivId", slider.value);
-        });
+        //});
     }
 
     function getSliderValue(sliderId) {
@@ -1073,6 +1080,34 @@
         
         svgDiv.style.transform = "translate(" + translateXpx + "px," + translateYpx + "px)";
     }
+
+    function openFileSelector() {
+        // Trigger the click event on the file input
+        document.getElementById('fileInput').click();
+    }
+
+    function handleFileSelection() {
+        // Get the selected file
+        const fileInput = document.getElementById('fileInput');
+        const selectedFile = fileInput.files[0];
+
+        if (selectedFile) {
+            // Read the content of the file
+            const fileReader = new FileReader();
+            fileReader.onload = function (e) {
+                // Process the file content (you can replace this with your processing logic)
+                const fileContent = e.target.result;
+                //console.log("File content:", fileContent);
+                var imgUrlElement = document.getElementById("img-url");
+                imgUrlElement.value = selectedFile.name;
+                //imgUrlElement.dispatchEvent(new Event('change'));
+                handleFileChange(fileContent);
+        };
+            
+            //fileReader.readAsText(selectedFile); // You can use readAsDataURL for images, readAsArrayBuffer for binary files, etc.
+            fileReader.readAsDataURL(selectedFile); // You can use readAsDataURL for images, readAsArrayBuffer for binary files, etc.
+        }
+    }
 </script>
 
 <style>
@@ -1241,8 +1276,9 @@ body {
     <div class="top-bar">Image Pattern Controls
         <div id="image-info-div">
             <label for="img-url">Img. Url</label>
-            <input type="text" id="img-url" value="test.jpg">
-        
+            <input type="text" id="img-url" value="test.jpg" onclick="openFileSelector();">
+            <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelection();">
+
             <label for="img-width">Img. w</label>
             <input type="text" id="img-width" value="1024">
 
